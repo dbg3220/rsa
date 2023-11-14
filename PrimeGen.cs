@@ -3,6 +3,7 @@ using System.Numerics;
 using System.Diagnostics;
 using System.Security.Cryptography;
 using System.Collections.Concurrent;
+using System.Collections;
 
 namespace rsa.PrimeGen
 {
@@ -90,8 +91,39 @@ namespace rsa.PrimeGen
         /// <returns>The result as an array of BigIntegers</returns>
         public BigInteger[] getNums(int count)
         {
-            //TODO
-            return null;
+            List<Task> tasks = new List<Task>();
+            ConcurrentQueue<BigInteger> resultBox = new ConcurrentQueue<BigInteger>();
+            CancellationTokenSource tokenSource = new CancellationTokenSource();
+            CancellationToken token = tokenSource.Token;
+            for (int i = 0; i < numThreads; i++)
+            {
+                Task thisTask = Task.Run(() => threadedGetNum(resultBox, bits, token));
+                tasks.Add(thisTask);
+            }
+
+            for (; ; )
+            {
+                if (resultBox.Count >= count)
+                {
+                    tokenSource.Cancel();
+                    foreach (Task t in tasks)
+                    {
+                        t.Wait();
+                    }
+                    tokenSource.Dispose();
+                    break;
+                }
+            }
+
+            ArrayList list = new ArrayList();
+            for (int i = 0; i < count; i++)
+            {
+                BigInteger num;
+                resultBox.TryDequeue(out num);
+                list.Add(num);
+            }
+
+            return (BigInteger[])list.ToArray(typeof(BigInteger));
         }
 
         /// <summary>
