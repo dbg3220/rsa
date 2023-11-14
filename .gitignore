@@ -1,0 +1,9 @@
+.vscode/
+bin/
+obj/
+
+# Don't include project PDF
+PROJECT 3.pdf
+
+# Don't include dotnet solution files
+*.sln
