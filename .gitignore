@@ -7,3 +7,6 @@ PROJECT 3.pdf
 
 # Don't include dotnet solution files
 *.sln
+
+# Don't include generated key files
+*.key
