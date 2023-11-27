@@ -11,3 +11,10 @@
 ## Authors
 
     - Damon B. Gonzalez
+
+## Plan
+
+    - Implement Command Line Argument parsing
+    - Use existing C# class to interface with the server
+    - Implement rsa formula
+    - Implement each command line argument option as runnable portion of the program
