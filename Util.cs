@@ -6,6 +6,31 @@ namespace rsa.PrimeGen
 {
     public static class Utils
     {
+
+        /// <summary>
+        /// Computes the mod inverse of a and n.
+        /// 
+        /// The output is an integer X such that n % X = a
+        /// </summary>
+        /// <param name="a">The result of the modulus</param>
+        /// <param name="n">The first parameter of the modulus</param>
+        public static BigInteger modInverse(BigInteger a, BigInteger n)
+        {
+            BigInteger i = n, v = 0, d = 1;
+            while (a > 0)
+            {
+                BigInteger t = i / a, x = a;
+                a = i % x;
+                i = x;
+                x = d;
+                d = v - t * x;
+                v = x;
+            }
+            v %= n;
+            if (v < 0) v = (v + n) % n;
+            return v;
+        }
+
         /// <summary>
         /// A heuristic for checking if a number is prime
         /// </summary>
