@@ -1,4 +1,5 @@
 using System.Collections;
+using System.Dynamic;
 using System.Numerics;
 using rsa.PrimeGen;
 
@@ -68,7 +69,7 @@ namespace rsa.Keys
             BigInteger D = Utils.modInverse(E, totient);
 
             PublicKey publicKey = new PublicKey(keysize, N, 16, E);
-            PrivateKey privateKey = new PrivateKey(keysize, N, Utils.computeMinBytes(D), D);
+            PrivateKey privateKey = new PrivateKey(keysize, N, Utils.computeMinBits(D), D);
             return new Tuple<PublicKey, PrivateKey>(publicKey, privateKey);
         }
     }
@@ -110,6 +111,15 @@ namespace rsa.Keys
         }
 
         /// <summary>
+        /// Getter for the public portion of the key, large E
+        /// </summary>
+        /// <returns>The public key</returns>
+        public BigInteger getE()
+        {
+            return E;
+        }
+
+        /// <summary>
         /// Generates a key encoded in base64 given the
         /// state of this object
         /// </summary>
@@ -118,16 +128,16 @@ namespace rsa.Keys
         {
             List<byte> byteSequence = new List<byte>();
             // the small e value
-            byte[] eBytes = BitConverter.GetBytes(e);
-            foreach (var b in eBytes)
-                byteSequence.Add(b);
+            byte[] eBytes = BitConverter.GetBytes((int)Math.Ceiling(e / 8.0));
+            for (int i = 0; i < 4; i++)
+                byteSequence.Add(eBytes[i]);
             // the big E value
             byte[] bigEBytes = E.ToByteArray();
             Array.Reverse(bigEBytes);
             foreach (var b in bigEBytes)
                 byteSequence.Add(b);
             // the small n value
-            byte[] nBytes = BitConverter.GetBytes(getKeysize());
+            byte[] nBytes = BitConverter.GetBytes((int)Math.Ceiling(getKeysize() / 8.0));
             foreach (var b in nBytes)
                 byteSequence.Add(b);
             // the big N value
@@ -176,13 +186,41 @@ namespace rsa.Keys
         }
 
         /// <summary>
+        /// Getter for the private portion of the key, large D
+        /// </summary>
+        /// <returns>The private key</returns>
+        public BigInteger getD()
+        {
+            return D;
+        }
+
+        /// <summary>
         /// Generates a key encoded in base64 given the
         /// state of this object
         /// </summary>
         /// <returns>A string in base 64</returns>
         private string encodeKeyIn64()
         {
-            return "blahblah";//implement
+            List<byte> byteSequence = new List<byte>();
+            // the small d value
+            byte[] eBytes = BitConverter.GetBytes((int)Math.Ceiling(d / 8.0));
+            foreach (var b in eBytes)
+                byteSequence.Add(b);
+            // the big D value
+            byte[] bigEBytes = D.ToByteArray();
+            Array.Reverse(bigEBytes);
+            foreach (var b in bigEBytes)
+                byteSequence.Add(b);
+            // the small n value
+            byte[] nBytes = BitConverter.GetBytes((int)Math.Ceiling(getKeysize() / 8.0));
+            foreach (var b in nBytes)
+                byteSequence.Add(b);
+            // the big N value
+            byte[] bigNBytes = getN().ToByteArray();
+            foreach (var b in bigNBytes)
+                byteSequence.Add(b);
+
+            return System.Convert.ToBase64String(byteSequence.ToArray());
         }
     }
 }
