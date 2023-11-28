@@ -121,7 +121,7 @@ namespace rsa
 
         /// <summary>
         /// Computes the minimum number of bytes needed to represent the BigInteger value.
-        /// Assuming that the bytes represent unsigned integers.
+        /// Assuming that the bytes represents an unsigned integer.
         /// </summary>
         /// <param name="value">The value to compute off of</param>
         /// <returns>The min number of bytes</returns>
@@ -129,6 +129,22 @@ namespace rsa
         {
             int exp = 1;
             while ((BigInteger)Math.Pow(256, exp) - 1 < value)
+            {
+                exp++;
+            }
+            return exp;
+        }
+
+        /// <summary>
+        /// Computes the minimum number of bits needed to represent the BigInteger value.
+        /// Assuming that the bits represents an unsigned integer.
+        /// </summary>
+        /// <param name="value">The value to compute</param>
+        /// <returns>The min number of bits</returns>
+        public static int computeMinBits(BigInteger value)
+        {
+            int exp = 1;
+            while ((BigInteger)Math.Pow(2, exp) - 1 < value)
             {
                 exp++;
             }
