@@ -127,13 +127,12 @@ namespace rsa
         /// <returns>The min number of bytes</returns>
         private static int computeMinBytes(BigInteger value)
         {
-            int i = 1;
-            while (value > 255)
+            int exp = 1;
+            while ((BigInteger)Math.Pow(256, exp) - 1 < value)
             {
-                value /= 255;
-                i++;
+                exp++;
             }
-            return i;
+            return exp;
         }
 
         /// <summary>
