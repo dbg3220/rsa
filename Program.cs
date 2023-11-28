@@ -1,4 +1,5 @@
 using rsa.PrimeGen;
+using rsa.Keys;
 
 namespace rsa
 {
@@ -28,7 +29,7 @@ namespace rsa
                         WriteToError("Integer keysize must be provided");
                         Environment.Exit(1);
                     }
-                    int keysize;
+                    int keysize = 0;
                     try
                     {
                         keysize = Int32.Parse(args[1]);
@@ -38,8 +39,7 @@ namespace rsa
                         WriteToError("A valid integer must be provided");
                         Environment.Exit(1);
                     }
-                    //replace the following code
-                    Console.WriteLine(keyGen);
+                    Key.generateKeyPair(keysize);
                     break;
                 case sendKey:
                     if (args.Length != 2)

@@ -125,7 +125,7 @@ namespace rsa
         /// </summary>
         /// <param name="value">The value to compute off of</param>
         /// <returns>The min number of bytes</returns>
-        private static int computeMinBytes(BigInteger value)
+        public static int computeMinBytes(BigInteger value)
         {
             int exp = 1;
             while ((BigInteger)Math.Pow(256, exp) - 1 < value)
