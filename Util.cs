@@ -2,7 +2,7 @@
 using System.Numerics;
 using System.Security.Cryptography;
 
-namespace rsa.PrimeGen
+namespace rsa
 {
     public static class Utils
     {
@@ -134,6 +134,28 @@ namespace rsa.PrimeGen
                 i++;
             }
             return i;
+        }
+
+        /// <summary>
+        /// Convert plain text to base64 string
+        /// </summary>
+        /// <param name="plainText">The text to encode</param>
+        /// <returns>The base 64 string</returns>
+        public static string Base64Encode(string plainText)
+        {
+            var plainTextBytes = System.Text.Encoding.UTF8.GetBytes(plainText);
+            return System.Convert.ToBase64String(plainTextBytes);
+        }
+
+        /// <summary>
+        /// Convert base64 string to plain text
+        /// </summary>
+        /// <param name="base64EncodedData">The base 64 to decode</param>
+        /// <returns>The plain text</returns>
+        public static string Base64Decode(string base64EncodedData)
+        {
+            var base64EncodedBytes = System.Convert.FromBase64String(base64EncodedData);
+            return System.Text.Encoding.UTF8.GetString(base64EncodedBytes);
         }
     }
 }
