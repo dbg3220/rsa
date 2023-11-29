@@ -1,5 +1,6 @@
 using rsa.PrimeGen;
 using rsa.Keys;
+using rsa.RequestHandler;
 
 namespace rsa
 {
@@ -47,8 +48,18 @@ namespace rsa
                         WriteToError("email must be provided");
                         Environment.Exit(1);
                     }
-                    //replace the following code
-                    Console.WriteLine(sendKey);
+                    PublicKey? publicKey = KeyHandler.loadPublicKey();
+                    if (publicKey == null)
+                    {
+                        Console.WriteLine("No Key Exists");
+                        Environment.Exit(1);
+                    }
+                    Controller c = new Controller();
+                    HttpResponseMessage response = c.keyPUT(args[1], publicKey.encodeKeyIn64());
+                    if (response.IsSuccessStatusCode)
+                        Console.WriteLine("Key saved");
+                    else
+                        Console.WriteLine("Could not access the server");
                     break;
                 case getKey:
                     if (args.Length != 2)
