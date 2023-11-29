@@ -34,21 +34,21 @@ namespace rsa.Keys
             string? key = root.GetProperty("key").GetString();
             byte[] keyBytes = System.Convert.FromBase64String(key);
 
-            int e = BitConverter.ToInt32(keyBytes, 0);
-            byte[] byteLargeE = new byte[e];
-            for (int i = 4; i < 4 + e; i++)
+            int eBytes = BitConverter.ToInt32(keyBytes, 0);
+            byte[] byteLargeE = new byte[eBytes];
+            for (int i = 4; i < 4 + eBytes; i++)
                 byteLargeE[i - 4] = keyBytes[i];
             Array.Reverse(byteLargeE);//to correct for endianness
             BigInteger E = new BigInteger(byteLargeE);
 
-            int n = BitConverter.ToInt32(keyBytes, 4 + e);
-            byte[] byteLargeN = new byte[n];
-            for (int i = 4 + e + 4; i < 4 + e + 4 + n; i++)
-                byteLargeN[i - (4 + e + 4)] = keyBytes[i];
+            int nBytes = BitConverter.ToInt32(keyBytes, 4 + eBytes);
+            byte[] byteLargeN = new byte[nBytes];
+            for (int i = 4 + eBytes + 4; i < 4 + eBytes + 4 + nBytes; i++)
+                byteLargeN[i - (4 + eBytes + 4)] = keyBytes[i];
             Array.Reverse(byteLargeN);//to correct for endianness
             BigInteger N = new BigInteger(byteLargeN);
 
-            return new PublicKey(e, E, n, N, false);
+            return new PublicKey(nBytes * 8, N, eBytes * 8, E, false);//translate bytes to bits for the key constructor
         }
 
         /// <summary>
@@ -248,16 +248,33 @@ namespace rsa.Keys
             // the big E value
             byte[] bigEBytes = E.ToByteArray();
             Array.Reverse(bigEBytes);
-            foreach (var b in bigEBytes)
-                byteSequence.Add(b);
+            if (bigEBytes[0] == 0)
+            {
+                for (int i = 1; i < bigEBytes.Length; i++)
+                    byteSequence.Add(bigEBytes[i]);
+            }
+            else
+            {
+                foreach (var b in bigEBytes)
+                    byteSequence.Add(b);
+            }
             // the small n value
             byte[] nBytes = BitConverter.GetBytes((int)Math.Ceiling(getKeysize() / 8.0));
             foreach (var b in nBytes)
                 byteSequence.Add(b);
             // the big N value
             byte[] bigNBytes = getN().ToByteArray();
-            foreach (var b in bigNBytes)
-                byteSequence.Add(b);
+            Array.Reverse(bigNBytes);
+            if (bigNBytes[0] == 0)
+            {
+                for (int i = 1; i < bigNBytes.Length; i++)
+                    byteSequence.Add(bigNBytes[i]);
+            }
+            else
+            {
+                foreach (var b in bigNBytes)
+                    byteSequence.Add(b);
+            }
 
             return System.Convert.ToBase64String(byteSequence.ToArray());
         }
