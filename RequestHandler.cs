@@ -81,7 +81,8 @@ namespace rsa.Controller
         public HttpResponseMessage messagePUT(string email, string message_content)
         {
             var requestURL = serverURL + "/Message/" + email;
-            return null;
+            var JSON = $"{{\"email\":\"{email}\", \"content\":\"{message_content}\"}}";
+            return makePUTRequest(requestURL, JSON);
         }
 
         /// <summary>
@@ -91,7 +92,8 @@ namespace rsa.Controller
         /// <returns>The result of the http request</returns>
         public HttpResponseMessage keyGET(string email)
         {
-            return null;
+            var requestURL = serverURL + "/Key/" + email;
+            return makeGETRequest(requestURL);
         }
 
         /// <summary>
@@ -102,7 +104,9 @@ namespace rsa.Controller
         /// <returns></returns>
         public HttpResponseMessage keyPUT(string email, string key)
         {
-            return null;
+            var requestURL = serverURL + "/Key/" + email;
+            var JSON = $"{{\"email\":\"{email}\", \"key\":\"{key}\"}}";
+            return makePUTRequest(requestURL, JSON);
         }
     }
 }
