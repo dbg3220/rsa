@@ -2,7 +2,7 @@ using System.Reflection.Metadata;
 using System.Text;
 using rsa.Keys;
 
-namespace rsa.Controller
+namespace rsa.RequestHandler
 {
     /// <summary>
     /// Class to Handle all http operations
