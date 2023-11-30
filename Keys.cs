@@ -266,40 +266,23 @@ namespace rsa.Keys
         public string encodeKeyIn64()
         {
             List<byte> byteSequence = new List<byte>();
-            // the number of bytes of the E value(itself represented as a length 4 array of bytes, big endian)
-            byte[] eBytes = BitConverter.GetBytes(Utils.computeMinBytes(E));
-            for (int i = 0; i < 4; i++)
-                byteSequence.Add(eBytes[i]);
             // the E value
             byte[] bigEBytes = E.ToByteArray();
-            Array.Reverse(bigEBytes);
-            if (bigEBytes[0] == 0)//trim off the sign bit
-            {
-                for (int i = 1; i < bigEBytes.Length; i++)
-                    byteSequence.Add(bigEBytes[i]);
-            }
-            else
-            {
-                foreach (var b in bigEBytes)
-                    byteSequence.Add(b);
-            }
-            // the number of bytes of the N value(itself represented as a length 4 array of bytes, big endian)
-            byte[] nBytes = BitConverter.GetBytes(Utils.computeMinBytes(getN()));
-            foreach (var b in nBytes)
+            byte[] smallEBytes = BitConverter.GetBytes(bigEBytes.Length);
+            foreach (var b in smallEBytes)
                 byteSequence.Add(b);
+            Array.Reverse(bigEBytes);//correction for endianness
+            foreach (var b in bigEBytes)
+                byteSequence.Add(b);
+
             // the N value
             byte[] bigNBytes = getN().ToByteArray();
-            Array.Reverse(bigNBytes);
-            if (bigNBytes[0] == 0)//trim off the sign bit
-            {
-                for (int i = 1; i < bigNBytes.Length; i++)
-                    byteSequence.Add(bigNBytes[i]);
-            }
-            else
-            {
-                foreach (var b in bigNBytes)
-                    byteSequence.Add(b);
-            }
+            byte[] smallNBytes = BitConverter.GetBytes(bigNBytes.Length);
+            foreach (var b in smallNBytes)
+                byteSequence.Add(b);
+            Array.Reverse(bigNBytes);//correction for endianness
+            foreach (var b in bigNBytes)
+                byteSequence.Add(b);
 
             return Convert.ToBase64String(byteSequence.ToArray());
         }
@@ -393,40 +376,24 @@ namespace rsa.Keys
         public string encodeKeyIn64()
         {
             List<byte> byteSequence = new List<byte>();
-            // the number of bytes of the E value(itself represented as a length 4 array of bytes, big endian)
-            byte[] eBytes = BitConverter.GetBytes(Utils.computeMinBytes(D));
-            foreach (var b in eBytes)
-                byteSequence.Add(b);
+
             // the D value
             byte[] bigEBytes = D.ToByteArray();
-            Array.Reverse(bigEBytes);
-            if (bigEBytes[0] == 0)//trim off the sign bit
-            {
-                for (int i = 1; i < bigEBytes.Length; i++)
-                    byteSequence.Add(bigEBytes[i]);
-            }
-            else
-            {
-                foreach (var b in bigEBytes)
-                    byteSequence.Add(b);
-            }
-            // the number of bytes of the N value(itself represented as a length 4 array of bytes, big endian)
-            byte[] nBytes = BitConverter.GetBytes(Utils.computeMinBytes(getN()));
-            foreach (var b in nBytes)
+            byte[] smallEBytes = BitConverter.GetBytes(bigEBytes.Length);
+            foreach (var b in smallEBytes)
                 byteSequence.Add(b);
+            Array.Reverse(bigEBytes);//correction for endianness
+            foreach (var b in bigEBytes)
+                byteSequence.Add(b);
+
             // the N value
             byte[] bigNBytes = getN().ToByteArray();
-            Array.Reverse(bigNBytes);
-            if (bigNBytes[0] == 0)//trim off the sign bit
-            {
-                for (int i = 1; i < bigNBytes.Length; i++)
-                    byteSequence.Add(bigNBytes[i]);
-            }
-            else
-            {
-                foreach (var b in bigNBytes)
-                    byteSequence.Add(b);
-            }
+            byte[] smallNBytes = BitConverter.GetBytes(bigNBytes.Length);
+            foreach (var b in smallNBytes)
+                byteSequence.Add(b);
+            Array.Reverse(bigNBytes);//correction for endianness
+            foreach (var b in bigNBytes)
+                byteSequence.Add(b);
 
             return Convert.ToBase64String(byteSequence.ToArray());
         }

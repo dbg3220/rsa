@@ -19,6 +19,13 @@
     - Implement rsa formula
     - Implement each command line argument option as runnable portion of the program
 
+## Quirks
+
+    When conversions are made between BigIntegers and sequences occasionally there
+    are bytes = 0 acting as a sign bit. I decided to leave those on for the sake of simplicity
+    in implementation. This may lead to my key representations being incompatible with other
+    students' software. LOLLLLLL :(
+
 ### Testing with curl
 
     The url to the server is "http://kayrun.cs.rit.edu:5000".
