@@ -191,6 +191,7 @@ namespace rsa
                 string encrypted_data = root.GetProperty("content").GetString();
 
                 string decrypted_data = myKey.decrypt(encrypted_data);
+                Console.WriteLine(decrypted_data);
             }
             else
                 Console.WriteLine("Could not access the server");
