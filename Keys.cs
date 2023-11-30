@@ -25,14 +25,21 @@ namespace rsa.Keys
             if (!File.Exists(PublicKey.default_filename))
                 return null;
 
-            StreamReader sr = new StreamReader(PublicKey.default_filename);
-            string JSON = sr.ReadToEnd();
+            string JSON = "";
+            using (StreamReader sr = new StreamReader(PublicKey.default_filename))
+            {
+                JSON = sr.ReadToEnd();
+            }
 
             var jsonDoc = JsonDocument.Parse(JSON);
             var root = jsonDoc.RootElement;
 
             string? encoded_key = root.GetProperty("key").GetString();
             byte[] keyBytes = Convert.FromBase64String(encoded_key);
+
+            //Delete later
+            foreach (var b in keyBytes)
+                Console.Write(b + " ");
 
             int eBytes = BitConverter.ToInt32(keyBytes, 0);
             byte[] byteLargeE = new byte[eBytes];
@@ -48,7 +55,7 @@ namespace rsa.Keys
             Array.Reverse(byteLargeN);//to correct for endianness
             BigInteger N = new BigInteger(byteLargeN);
 
-            return new PublicKey(nBytes * 8, N, eBytes * 8, E);//translate bytes to bits for the key constructor
+            return new PublicKey(N, E);
         }
 
         /// <summary>
@@ -59,7 +66,39 @@ namespace rsa.Keys
         /// <returns>A private key object</returns>
         public static PrivateKey? loadPrivateKey()
         {
-            return null;//implement
+            if (!File.Exists(PrivateKey.filename))
+                return null;
+
+            string JSON = "";
+            using (StreamReader sr = new StreamReader(PrivateKey.filename))
+            {
+                JSON = sr.ReadToEnd();
+            }
+
+            var jsonDoc = JsonDocument.Parse(JSON);
+            var root = jsonDoc.RootElement;
+
+            JsonElement emailArray = root.GetProperty("email");
+            List<string> emails = emailArray.EnumerateArray().Select(element => element.GetString()).ToList();
+
+            string? encoded_key = root.GetProperty("key").GetString();
+            byte[] keyBytes = Convert.FromBase64String(encoded_key);
+
+            int dBytes = BitConverter.ToInt32(keyBytes, 0);
+            byte[] byteLargeD = new byte[dBytes];
+            for (int i = 4; i < 4 + dBytes; i++)
+                byteLargeD[i - 4] = keyBytes[i];
+            Array.Reverse(byteLargeD);//to correct for endianness
+            BigInteger D = new BigInteger(byteLargeD);
+
+            int nBytes = BitConverter.ToInt32(keyBytes, 4 + dBytes);
+            byte[] byteLargeN = new byte[nBytes];
+            for (int i = 4 + dBytes + 4; i < 4 + dBytes + 4 + nBytes; i++)
+                byteLargeN[i - (4 + dBytes + 4)] = keyBytes[i];
+            Array.Reverse(byteLargeN);//to correct for endianness
+            BigInteger N = new BigInteger(byteLargeN);
+
+            return new PrivateKey(N, D, emails);
         }
 
         /// <summary>
@@ -102,7 +141,7 @@ namespace rsa.Keys
             Array.Reverse(byteLargeN);//to correct for endianness
             BigInteger N = new BigInteger(byteLargeN);
 
-            return new PublicKey(nBytes * 8, N, eBytes * 8, E, email);
+            return new PublicKey(N, E, email);
         }
     }
 
@@ -112,39 +151,23 @@ namespace rsa.Keys
     public class Key
     {
         /// <summary>
-        /// The size in bits of the key
-        /// </summary>
-        private int n;
-
-        /// <summary>
         /// The key
         /// </summary>
         private BigInteger N;
 
         /// <summary>
-        /// Generates a key
+        /// Creates a key object with the common portion of a public/private key pair
         /// </summary>
-        /// <param name="n">The bit size of the key</param>
         /// <param name="N">The key</param>
-        public Key(int n, BigInteger N)
+        public Key(BigInteger N)
         {
-            this.n = n;
             this.N = N;
         }
 
         /// <summary>
-        /// Getter for the key size, small n
+        /// Getter for the key value
         /// </summary>
-        /// <returns>The key size</returns>
-        public int getKeysize()
-        {
-            return n;
-        }
-
-        /// <summary>
-        /// Getter for the key value, large N
-        /// </summary>
-        /// <returns>The key size</returns>
+        /// <returns>The key value</returns>
         public BigInteger getN()
         {
             return N;
@@ -172,9 +195,9 @@ namespace rsa.Keys
             BigInteger E = gen3.getNum();
             BigInteger D = Utils.modInverse(E, totient);
 
-            PublicKey publicKey = new PublicKey(keysize, N, 16, E);
+            PublicKey publicKey = new PublicKey(N, E);
             publicKey.writeToDisc();
-            PrivateKey privateKey = new PrivateKey(keysize, N, Utils.computeMinBits(D), D);
+            PrivateKey privateKey = new PrivateKey(N, D);
             privateKey.writeToDisc();
             return new Tuple<PublicKey, PrivateKey>(publicKey, privateKey);
         }
@@ -194,28 +217,20 @@ namespace rsa.Keys
         private string? email;
 
         /// <summary>
-        /// The size in bits of the public key
-        /// </summary>
-        private int e;
-
-        /// <summary>
         /// The public key
         /// </summary>
         private BigInteger E;
 
         /// <summary>
-        /// Creates a public key object with no email associated with it.
+        /// Creates a public key object with no associated email.
         /// 
         /// Meant to represent a public key that is local to the current machine.
         /// (The field 'email' will be null).
         /// </summary>
-        /// <param name="n">The size in bits of the key</param>
         /// <param name="N">The key</param>
-        /// <param name="e">The size in bits of the public key</param>
         /// <param name="E">The public key</param>
-        public PublicKey(int n, BigInteger N, int e, BigInteger E) : base(n, N)
+        public PublicKey(BigInteger N, BigInteger E) : base(N)
         {
-            this.e = e;
             this.E = E;
             this.email = null;
         }
@@ -225,15 +240,11 @@ namespace rsa.Keys
         /// than the key is written to the disc with the email as its property and
         /// filename.
         /// </summary>
-        /// <param name="n">The size in bits of the key</param>
         /// <param name="N">The key</param>
-        /// <param name="e">The size in bits of the public key</param>
         /// <param name="E">The public key</param>
         /// <param name="email">The email to labe the key with</param>
-        /// <param name="writeToFile">The flag for writing</param>
-        public PublicKey(int n, BigInteger N, int e, BigInteger E, string email) : base(n, N)
+        public PublicKey(BigInteger N, BigInteger E, string email) : base(N)
         {
-            this.e = e;
             this.E = E;
             this.email = email;
         }
@@ -255,14 +266,14 @@ namespace rsa.Keys
         public string encodeKeyIn64()
         {
             List<byte> byteSequence = new List<byte>();
-            // the small e value
-            byte[] eBytes = BitConverter.GetBytes((int)Math.Ceiling(e / 8.0));
+            // the number of bytes of the E value(itself represented as a length 4 array of bytes, big endian)
+            byte[] eBytes = BitConverter.GetBytes(Utils.computeMinBytes(E));
             for (int i = 0; i < 4; i++)
                 byteSequence.Add(eBytes[i]);
-            // the big E value
+            // the E value
             byte[] bigEBytes = E.ToByteArray();
             Array.Reverse(bigEBytes);
-            if (bigEBytes[0] == 0)
+            if (bigEBytes[0] == 0)//trim off the sign bit
             {
                 for (int i = 1; i < bigEBytes.Length; i++)
                     byteSequence.Add(bigEBytes[i]);
@@ -272,14 +283,14 @@ namespace rsa.Keys
                 foreach (var b in bigEBytes)
                     byteSequence.Add(b);
             }
-            // the small n value
-            byte[] nBytes = BitConverter.GetBytes((int)Math.Ceiling(getKeysize() / 8.0));
+            // the number of bytes of the N value(itself represented as a length 4 array of bytes, big endian)
+            byte[] nBytes = BitConverter.GetBytes(Utils.computeMinBytes(getN()));
             foreach (var b in nBytes)
                 byteSequence.Add(b);
-            // the big N value
+            // the N value
             byte[] bigNBytes = getN().ToByteArray();
             Array.Reverse(bigNBytes);
-            if (bigNBytes[0] == 0)
+            if (bigNBytes[0] == 0)//trim off the sign bit
             {
                 for (int i = 1; i < bigNBytes.Length; i++)
                     byteSequence.Add(bigNBytes[i]);
@@ -330,7 +341,7 @@ namespace rsa.Keys
     /// </summary>
     public class PrivateKey : Key
     {
-        const string filename = "private.key";
+        public const string filename = "private.key";
 
         /// <summary>
         /// The list of emails associated with this local private key
@@ -338,33 +349,35 @@ namespace rsa.Keys
         private List<string> emails;
 
         /// <summary>
-        /// The size in bits of the private key
-        /// </summary>
-        private int d;
-
-        /// <summary>
         /// The private key
         /// </summary>
         private BigInteger D;
 
         /// <summary>
-        /// Generates a private key and writes it to the disc using
-        /// 'filename'. If a file already exists with that name
-        /// it is overwritten.
+        /// Creates a private key object with an empty list of emails.
         /// </summary>
-        /// <param name="n">The size in bits of the key</param>
         /// <param name="N">The key</param>
-        /// <param name="d">The size in bits of the private key</param>
         /// <param name="D">The private key</param>
-        public PrivateKey(int n, BigInteger N, int d, BigInteger D) : base(n, N)
+        public PrivateKey(BigInteger N, BigInteger D) : base(N)
         {
-            this.d = d;
             this.D = D;
             this.emails = new List<string>();
         }
 
         /// <summary>
-        /// Getter for the private portion of the key, large D
+        /// Creates a private key object with the given list of emails.
+        /// </summary>
+        /// <param name="N">The key</param>
+        /// <param name="D">The private key</param>
+        /// <param name="emails"></param>
+        public PrivateKey(BigInteger N, BigInteger D, List<string> emails) : base(N)
+        {
+            this.D = D;
+            this.emails = emails;
+        }
+
+        /// <summary>
+        /// Getter for the private portion of the key
         /// </summary>
         /// <returns>The private key</returns>
         public BigInteger getD()
@@ -380,25 +393,42 @@ namespace rsa.Keys
         public string encodeKeyIn64()
         {
             List<byte> byteSequence = new List<byte>();
-            // the small d value
-            byte[] eBytes = BitConverter.GetBytes((int)Math.Ceiling(d / 8.0));
+            // the number of bytes of the E value(itself represented as a length 4 array of bytes, big endian)
+            byte[] eBytes = BitConverter.GetBytes(Utils.computeMinBytes(D));
             foreach (var b in eBytes)
                 byteSequence.Add(b);
-            // the big D value
+            // the D value
             byte[] bigEBytes = D.ToByteArray();
             Array.Reverse(bigEBytes);
-            foreach (var b in bigEBytes)
-                byteSequence.Add(b);
-            // the small n value
-            byte[] nBytes = BitConverter.GetBytes((int)Math.Ceiling(getKeysize() / 8.0));
+            if (bigEBytes[0] == 0)//trim off the sign bit
+            {
+                for (int i = 1; i < bigEBytes.Length; i++)
+                    byteSequence.Add(bigEBytes[i]);
+            }
+            else
+            {
+                foreach (var b in bigEBytes)
+                    byteSequence.Add(b);
+            }
+            // the number of bytes of the N value(itself represented as a length 4 array of bytes, big endian)
+            byte[] nBytes = BitConverter.GetBytes(Utils.computeMinBytes(getN()));
             foreach (var b in nBytes)
                 byteSequence.Add(b);
-            // the big N value
+            // the N value
             byte[] bigNBytes = getN().ToByteArray();
-            foreach (var b in bigNBytes)
-                byteSequence.Add(b);
+            Array.Reverse(bigNBytes);
+            if (bigNBytes[0] == 0)//trim off the sign bit
+            {
+                for (int i = 1; i < bigNBytes.Length; i++)
+                    byteSequence.Add(bigNBytes[i]);
+            }
+            else
+            {
+                foreach (var b in bigNBytes)
+                    byteSequence.Add(b);
+            }
 
-            return System.Convert.ToBase64String(byteSequence.ToArray());
+            return Convert.ToBase64String(byteSequence.ToArray());
         }
 
         /// <summary>

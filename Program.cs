@@ -104,9 +104,9 @@ namespace rsa
             if (response.IsSuccessStatusCode)
             {
                 Console.WriteLine("Key saved");
-                // PrivateKey privateKey = KeyHandler.loadPrivateKey();//write a method to modify the private key's list of email addresses
-                // privateKey.addToEmailList(args[1]);
-                // privateKey.writeToDisc();
+                PrivateKey privateKey = KeyHandler.loadPrivateKey();
+                privateKey.addToEmailList(args[1]);
+                privateKey.writeToDisc();
             }
             else
                 Console.WriteLine("Could not access the server");
