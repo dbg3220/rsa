@@ -20,7 +20,7 @@ namespace rsa
         {
             if (args.Length < 1)
             {
-                WriteToError("No command line option provided");
+                Console.WriteLine("No command line option provided");
                 Environment.Exit(1);
             }
             switch (args[0])
@@ -41,21 +41,10 @@ namespace rsa
                     GetMsg(args);
                     break;
                 default:
-                    WriteToError($"'{args[0]}' option not recognized");
+                    Console.WriteLine($"'{args[0]}' option not recognized");
                     Environment.Exit(1);
                     break;
             }
-        }
-
-        /// <summary>
-        /// Takes a string and writes it to standard error. Followed
-        /// by a new line character.
-        /// </summary>
-        /// <param name="msg">The string to write</param>
-        static void WriteToError(string msg)
-        {
-            TextWriter errWriter = Console.Error;
-            errWriter.WriteLine(msg);
         }
 
         /// <summary>
@@ -66,7 +55,7 @@ namespace rsa
         {
             if (args.Length != 2)
             {
-                WriteToError("Integer keysize must be provided");
+                Console.WriteLine("Integer keysize must be provided");
                 Environment.Exit(1);
             }
             int keysize = 0;
@@ -76,7 +65,7 @@ namespace rsa
             }
             catch (Exception)
             {
-                WriteToError("A valid integer must be provided");
+                Console.WriteLine("A valid integer must be provided");
                 Environment.Exit(1);
             }
             Key.generateKeyPair(keysize);
@@ -90,7 +79,7 @@ namespace rsa
         {
             if (args.Length != 2)
             {
-                WriteToError("email must be provided");
+                Console.WriteLine("email must be provided");
                 Environment.Exit(1);
             }
             PublicKey publicKey = KeyHandler.loadPublicKey();
@@ -120,14 +109,14 @@ namespace rsa
         {
             if (args.Length != 2)
             {
-                WriteToError("email must be provided");
+                Console.WriteLine("email must be provided");
                 Environment.Exit(1);
             }
-            Controller c2 = new Controller();
-            HttpResponseMessage response2 = c2.keyGET(args[1]);
-            if (response2.IsSuccessStatusCode)
+            Controller c = new Controller();
+            HttpResponseMessage response = c.keyGET(args[1]);
+            if (response.IsSuccessStatusCode)
             {
-                Task<string> task = response2.Content.ReadAsStringAsync();
+                Task<string> task = response.Content.ReadAsStringAsync();
                 task.Wait();
                 var data = task.Result;
                 var jsonDoc = JsonDocument.Parse(data);
@@ -151,15 +140,25 @@ namespace rsa
         /// <param name="args">The given command line arguments</param>
         static void SendMsg(string[] args)
         {
-            if (args.Length != 2)
+            if (args.Length != 3)
             {
-                WriteToError("email and message must be provided");
+                Console.WriteLine("email and message must be provided");
                 Environment.Exit(1);
             }
-            //replace the following code
-            Console.WriteLine(sendMsg);
 
-            //TODO
+            PublicKey? userKey = KeyHandler.loadUserKey(args[1]);
+            if (userKey == null)
+            {
+                Console.WriteLine($"Key does not exist for {args[1]}");
+                Environment.Exit(1);
+            }
+            string encrypted_data = userKey.encrypt(args[2]);
+            Controller c = new Controller();
+            HttpResponseMessage response = c.messagePUT(args[1], encrypted_data);
+            if (response.IsSuccessStatusCode)
+                Console.WriteLine("Message written");
+            else
+                Console.WriteLine("Could not access the server");
         }
 
         /// <summary>
@@ -170,13 +169,31 @@ namespace rsa
         {
             if (args.Length != 2)
             {
-                WriteToError("email must be provided");
+                Console.WriteLine("email must be provided");
                 Environment.Exit(1);
             }
-            //replace the following code
-            Console.WriteLine(getMsg);
 
-            //TODO
+            PrivateKey myKey = KeyHandler.loadPrivateKey();
+            if (!myKey.getEmailList().Contains(args[1]))
+            {
+                Console.WriteLine("");
+            }
+            Controller c = new Controller();
+            HttpResponseMessage response = c.messageGET(args[1]);
+            if (response.IsSuccessStatusCode)
+            {
+                Task<string> task = response.Content.ReadAsStringAsync();
+                task.Wait();
+                var data = task.Result;
+                var jsonDoc = JsonDocument.Parse(data);
+                var root = jsonDoc.RootElement;
+
+                string encrypted_data = root.GetProperty("content").GetString();
+
+                string decrypted_data = myKey.decrypt(encrypted_data);
+            }
+            else
+                Console.WriteLine("Could not access the server");
         }
     }
 }

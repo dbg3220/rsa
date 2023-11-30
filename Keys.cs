@@ -98,14 +98,43 @@ namespace rsa.Keys
         }
 
         /// <summary>
-        /// Loads the public keys on the current machine that are of other users.
+        /// Loads the public key of the user given their email.
         /// 
-        /// Returns an empty array if no other public keys exist.
+        /// If the key is not on the current machine than null is returned.
         /// </summary>
-        /// <returns>An array of public key objects</returns>
-        public static PublicKey[] loadUserKeys()
+        /// <returns>The public key object</returns>
+        public static PublicKey? loadUserKey(string email)
         {
-            return null;
+            if (!File.Exists(email + ".key"))
+                return null;
+
+            string JSON = "";
+            using (StreamReader sr = new StreamReader(email + ".key"))
+            {
+                JSON = sr.ReadToEnd();
+            }
+
+            var jsonDoc = JsonDocument.Parse(JSON);
+            var root = jsonDoc.RootElement;
+
+            string? encoded_key = root.GetProperty("key").GetString();
+            byte[] keyBytes = Convert.FromBase64String(encoded_key);
+
+            int eBytes = BitConverter.ToInt32(keyBytes, 0);
+            byte[] byteLargeE = new byte[eBytes];
+            for (int i = 4; i < 4 + eBytes; i++)
+                byteLargeE[i - 4] = keyBytes[i];
+            Array.Reverse(byteLargeE);//to correct for endianness
+            BigInteger E = new BigInteger(byteLargeE);
+
+            int nBytes = BitConverter.ToInt32(keyBytes, 4 + eBytes);
+            byte[] byteLargeN = new byte[nBytes];
+            for (int i = 4 + eBytes + 4; i < 4 + eBytes + 4 + nBytes; i++)
+                byteLargeN[i - (4 + eBytes + 4)] = keyBytes[i];
+            Array.Reverse(byteLargeN);//to correct for endianness
+            BigInteger N = new BigInteger(byteLargeN);
+
+            return new PublicKey(N, E, email);
         }
 
         /// <summary>
@@ -310,6 +339,22 @@ namespace rsa.Keys
                 }
             }
         }
+
+        /// <summary>
+        /// Encrypts a plain text string using this key object and returns the encrypted data
+        /// as a base64 encoded string
+        /// </summary>
+        /// <param name="message">The plain text to encrypt</param>
+        /// <returns>The base 64 encoded encrypted data</returns>
+        public string encrypt(string message)
+        {
+            byte[] plainTextBytes = System.Text.Encoding.UTF8.GetBytes(message);
+            BigInteger plainTextNum = new BigInteger(plainTextBytes);
+            BigInteger encryptedNum = BigInteger.ModPow(plainTextNum, E, getN());
+            byte[] encryptedBytes = encryptedNum.ToByteArray();
+            string encoded64 = Convert.ToBase64String(encryptedBytes);
+            return encoded64;
+        }
     }
 
     /// <summary>
@@ -359,6 +404,15 @@ namespace rsa.Keys
         public BigInteger getD()
         {
             return D;
+        }
+
+        /// <summary>
+        /// Getter for the list of emails of this private key
+        /// </summary>
+        /// <returns>The private key's valid emails</returns>
+        public List<string> getEmailList()
+        {
+            return emails;
         }
 
         /// <summary>
@@ -425,6 +479,22 @@ namespace rsa.Keys
         public void addToEmailList(string email)
         {
             emails.Add(email);
+        }
+
+        /// <summary>
+        /// Decrypts a base 64 encoded and encrypted data string using this key object and
+        /// returns the plain text string.
+        /// </summary>
+        /// <param name="encoded_data">The encrypted data</param>
+        /// <returns>The original plain text string</returns>
+        public string decrypt(string encoded_data)
+        {
+            byte[] decodedBytes = Convert.FromBase64String(encoded_data);
+            BigInteger encryptedNum = new BigInteger(decodedBytes);
+            BigInteger decryptedNum = BigInteger.ModPow(encryptedNum, D, getN());
+            byte[] decryptedBytes = decryptedNum.ToByteArray();
+            string decrypted_content = System.Text.Encoding.UTF8.GetString(decryptedBytes);
+            return decrypted_content;
         }
     }
 }
