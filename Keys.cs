@@ -37,10 +37,6 @@ namespace rsa.Keys
             string? encoded_key = root.GetProperty("key").GetString();
             byte[] keyBytes = Convert.FromBase64String(encoded_key);
 
-            //Delete later
-            foreach (var b in keyBytes)
-                Console.Write(b + " ");
-
             int eBytes = BitConverter.ToInt32(keyBytes, 0);
             byte[] byteLargeE = new byte[eBytes];
             for (int i = 4; i < 4 + eBytes; i++)
@@ -122,10 +118,6 @@ namespace rsa.Keys
         public static PublicKey loadKeyImmediate(string email, string encoded_key)
         {
             byte[] keyBytes = Convert.FromBase64String(encoded_key);
-
-            //Delete later
-            foreach (var b in keyBytes)
-                Console.Write(b + " ");
 
             int eBytes = BitConverter.ToInt32(keyBytes, 0);
             byte[] byteLargeE = new byte[eBytes];
@@ -266,6 +258,7 @@ namespace rsa.Keys
         public string encodeKeyIn64()
         {
             List<byte> byteSequence = new List<byte>();
+
             // the E value
             byte[] bigEBytes = E.ToByteArray();
             byte[] smallEBytes = BitConverter.GetBytes(bigEBytes.Length);
@@ -299,7 +292,7 @@ namespace rsa.Keys
             if (email == null)
             {
                 var base64encodedkey = encodeKeyIn64();
-                var json = $"{{\"email\":\"\", \"key\":\"{base64encodedkey}\"}}";
+                var json = $"{{\"email\":, \"key\":\"{base64encodedkey}\"}}";
                 FileInfo f = new FileInfo(default_filename);
                 using (StreamWriter sw = f.CreateText())
                 {
