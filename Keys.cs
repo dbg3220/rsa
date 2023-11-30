@@ -315,7 +315,7 @@ namespace rsa.Keys
             else
             {
                 var base64encodedkey = encodeKeyIn64();
-                var json = $"{{\"email\":{email}\"\", \"key\":\"{base64encodedkey}\"}}";
+                var json = $"{{\"email\":\"{email}\", \"key\":\"{base64encodedkey}\"}}";
                 FileInfo f = new FileInfo(email + ".key");
                 using (StreamWriter sw = f.CreateText())
                 {
@@ -417,7 +417,7 @@ namespace rsa.Keys
                 jsonEmails += $"\"{emails[emails.Count - 1]}\"]";
             }
             var base64encodedkey = encodeKeyIn64();
-            var json = $"{{\"email\":{jsonEmails}\"\", \"key\":\"{base64encodedkey}\"}}";
+            var json = $"{{\"email\":{jsonEmails}, \"key\":\"{base64encodedkey}\"}}";
             FileInfo f = new FileInfo(filename);
             using (StreamWriter sw = f.CreateText())
             {
