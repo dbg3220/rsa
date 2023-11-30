@@ -31,8 +31,8 @@ namespace rsa.Keys
             var jsonDoc = JsonDocument.Parse(JSON);
             var root = jsonDoc.RootElement;
 
-            string? key = root.GetProperty("key").GetString();
-            byte[] keyBytes = System.Convert.FromBase64String(key);
+            string? encoded_key = root.GetProperty("key").GetString();
+            byte[] keyBytes = Convert.FromBase64String(encoded_key);
 
             int eBytes = BitConverter.ToInt32(keyBytes, 0);
             byte[] byteLargeE = new byte[eBytes];
@@ -48,7 +48,7 @@ namespace rsa.Keys
             Array.Reverse(byteLargeN);//to correct for endianness
             BigInteger N = new BigInteger(byteLargeN);
 
-            return new PublicKey(nBytes * 8, N, eBytes * 8, E, false);//translate bytes to bits for the key constructor
+            return new PublicKey(nBytes * 8, N, eBytes * 8, E);//translate bytes to bits for the key constructor
         }
 
         /// <summary>
@@ -71,6 +71,38 @@ namespace rsa.Keys
         public static PublicKey[] loadUserKeys()
         {
             return null;
+        }
+
+        /// <summary>
+        /// Creates a public key object given the email and key as a base64
+        /// encoded string.
+        /// </summary>
+        /// <param name="email">The email of the user whose key it is</param>
+        /// <param name="encoded_key">The encoded key</param>
+        /// <returns>The public key object</returns>
+        public static PublicKey loadKeyImmediate(string email, string encoded_key)
+        {
+            byte[] keyBytes = Convert.FromBase64String(encoded_key);
+
+            //Delete later
+            foreach (var b in keyBytes)
+                Console.Write(b + " ");
+
+            int eBytes = BitConverter.ToInt32(keyBytes, 0);
+            byte[] byteLargeE = new byte[eBytes];
+            for (int i = 4; i < 4 + eBytes; i++)
+                byteLargeE[i - 4] = keyBytes[i];
+            Array.Reverse(byteLargeE);//to correct for endianness
+            BigInteger E = new BigInteger(byteLargeE);
+
+            int nBytes = BitConverter.ToInt32(keyBytes, 4 + eBytes);
+            byte[] byteLargeN = new byte[nBytes];
+            for (int i = 4 + eBytes + 4; i < 4 + eBytes + 4 + nBytes; i++)
+                byteLargeN[i - (4 + eBytes + 4)] = keyBytes[i];
+            Array.Reverse(byteLargeN);//to correct for endianness
+            BigInteger N = new BigInteger(byteLargeN);
+
+            return new PublicKey(nBytes * 8, N, eBytes * 8, E, email);
         }
     }
 
@@ -140,8 +172,10 @@ namespace rsa.Keys
             BigInteger E = gen3.getNum();
             BigInteger D = Utils.modInverse(E, totient);
 
-            PublicKey publicKey = new PublicKey(keysize, N, 16, E, true);
+            PublicKey publicKey = new PublicKey(keysize, N, 16, E);
+            publicKey.writeToDisc();
             PrivateKey privateKey = new PrivateKey(keysize, N, Utils.computeMinBits(D), D);
+            privateKey.writeToDisc();
             return new Tuple<PublicKey, PrivateKey>(publicKey, privateKey);
         }
     }
@@ -170,30 +204,20 @@ namespace rsa.Keys
         private BigInteger E;
 
         /// <summary>
-        /// Creates a public key. If writeToFile is true than the key is
-        /// written to the disk with 'default_filename'. If a file with that name already exists
-        /// than it is overwritten.
+        /// Creates a public key object with no email associated with it.
+        /// 
+        /// Meant to represent a public key that is local to the current machine.
+        /// (The field 'email' will be null).
         /// </summary>
         /// <param name="n">The size in bits of the key</param>
         /// <param name="N">The key</param>
         /// <param name="e">The size in bits of the public key</param>
         /// <param name="E">The public key</param>
-        /// <param name="writeToFile">The flag for writing</param>
-        public PublicKey(int n, BigInteger N, int e, BigInteger E, bool writeToFile) : base(n, N)
+        public PublicKey(int n, BigInteger N, int e, BigInteger E) : base(n, N)
         {
             this.e = e;
             this.E = E;
             this.email = null;
-            if (writeToFile)
-            {
-                var base64encodedkey = encodeKeyIn64();
-                var json = $"{{\"email\":\"\", \"key\":\"{base64encodedkey}\"}}";
-                FileInfo f = new FileInfo(default_filename);
-                using (StreamWriter sw = f.CreateText())
-                {
-                    sw.Write(json);
-                }
-            }
         }
 
         /// <summary>
@@ -207,21 +231,11 @@ namespace rsa.Keys
         /// <param name="E">The public key</param>
         /// <param name="email">The email to labe the key with</param>
         /// <param name="writeToFile">The flag for writing</param>
-        public PublicKey(int n, BigInteger N, int e, BigInteger E, string email, bool writeToFile) : base(n, N)
+        public PublicKey(int n, BigInteger N, int e, BigInteger E, string email) : base(n, N)
         {
             this.e = e;
             this.E = E;
             this.email = email;
-            if (writeToFile)
-            {
-                var base64encodedkey = encodeKeyIn64();
-                var json = $"{{\"email\":\"{this.email}\", \"key\":\"{base64encodedkey}\"}}";
-                FileInfo f = new FileInfo($"{email}.key");
-                using (StreamWriter sw = f.CreateText())
-                {
-                    sw.Write(json);
-                }
-            }
         }
 
         /// <summary>
@@ -276,16 +290,38 @@ namespace rsa.Keys
                     byteSequence.Add(b);
             }
 
-            return System.Convert.ToBase64String(byteSequence.ToArray());
+            return Convert.ToBase64String(byteSequence.ToArray());
         }
 
         /// <summary>
-        /// Decodes a key from base64 into a public key object
+        /// Writes this private key object to the current machine
+        /// 
+        /// If the 'email' field is null than the default filename is used.
+        /// Otherwise the key is written using the email in the pattern
+        ///     'email'.key
         /// </summary>
-        /// <returns>The object that represents this public key</returns>
-        public PublicKey decodeKeyFrom64(string encodedKey)
+        public void writeToDisc()
         {
-            return null;
+            if (email == null)
+            {
+                var base64encodedkey = encodeKeyIn64();
+                var json = $"{{\"email\":\"\", \"key\":\"{base64encodedkey}\"}}";
+                FileInfo f = new FileInfo(default_filename);
+                using (StreamWriter sw = f.CreateText())
+                {
+                    sw.Write(json);
+                }
+            }
+            else
+            {
+                var base64encodedkey = encodeKeyIn64();
+                var json = $"{{\"email\":{email}\"\", \"key\":\"{base64encodedkey}\"}}";
+                FileInfo f = new FileInfo(email + ".key");
+                using (StreamWriter sw = f.CreateText())
+                {
+                    sw.Write(json);
+                }
+            }
         }
     }
 
@@ -325,13 +361,6 @@ namespace rsa.Keys
             this.d = d;
             this.D = D;
             this.emails = new List<string>();
-            var base64encodedkey = encodeKeyIn64();
-            var json = $"{{\"email\":\"\", \"key\":\"{base64encodedkey}\"}}";
-            FileInfo f = new FileInfo(filename);
-            using (StreamWriter sw = f.CreateText())
-            {
-                sw.Write(json);
-            }
         }
 
         /// <summary>
@@ -373,12 +402,39 @@ namespace rsa.Keys
         }
 
         /// <summary>
-        /// Decodes a key from base 64 into a private key object
+        /// Writes this private key object to the current machine
         /// </summary>
-        /// <returns>The private key object</returns>
-        public static PrivateKey decodeKeyFrom64(string encodedKey)
+        public void writeToDisc()
         {
-            return null;
+            var jsonEmails = "[]";
+            if (emails.Count != 0)
+            {
+                jsonEmails = "[";
+                for (int i = 0; i < emails.Count - 1; i++)
+                {
+                    jsonEmails += $"\"{emails[i]}\",";
+                }
+                jsonEmails += $"\"{emails[emails.Count - 1]}\"]";
+            }
+            var base64encodedkey = encodeKeyIn64();
+            var json = $"{{\"email\":{jsonEmails}\"\", \"key\":\"{base64encodedkey}\"}}";
+            FileInfo f = new FileInfo(filename);
+            using (StreamWriter sw = f.CreateText())
+            {
+                sw.Write(json);
+            }
+        }
+
+        /// <summary>
+        /// Adds an email to the list of emails
+        /// 
+        /// This function DOES NOT write the updated object to the disc. To update
+        /// the object on the current machine you must call writeToDisc() after this function.
+        /// </summary>
+        /// <param name="email">The email to add</param>
+        public void addToEmailList(string email)
+        {
+            emails.Add(email);
         }
     }
 }

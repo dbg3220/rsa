@@ -134,14 +134,15 @@ namespace rsa
                 var root = jsonDoc.RootElement;
 
                 string email = root.GetProperty("email").GetString();
-                string key = root.GetProperty("key").GetString();
-            }
-            // var jsonDoc = JsonDocument.Parse(JSON);
-            // var root = jsonDoc.RootElement;
+                string encoded_key = root.GetProperty("key").GetString();
 
-            // string? key = root.GetProperty("key").GetString();
+                PublicKey key = KeyHandler.loadKeyImmediate(email, encoded_key);
+                key.writeToDisc();
+            }
             else
+            {
                 Console.WriteLine("Could not access the server");
+            }
         }
 
         /// <summary>
